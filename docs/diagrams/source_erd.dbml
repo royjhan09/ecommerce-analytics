@@ -1,0 +1,148 @@
+Project olist_ecommerce {
+    database_type: 'PostgreSQL'
+    Note: 'Logical model of the nine original Olist datasets. Types reflect the source CSV structure; physical SQL types will refined later.'
+}
+
+// ===============================================
+// 1. Orders
+// ===============================================
+
+Table orders {
+    order_id varchar [pk]
+    customer_id varchar [not null]
+    order_status varchar [not null]
+    order_purchase_timestamp varchar [not null]
+    order_approved_at varchar
+    order_delivered_carrier_date varchar
+    order_delivered_customer_date varchar
+    order_estimated_delivery_date varchar [not_null]
+}
+
+// ==============================================
+// 2. Customers
+// ==============================================
+
+Table customers {
+    customer_id varchar [pk]
+    customer_unique_id varchar [not null]
+    customer_zip_code_prefix int [not null]
+    customer_city varchar [not null]
+    customer_state varchar [not null]
+
+    Note: 'customer_id identifies an order-associated customer record. customer_unique_id can repeat across orders.'
+}
+
+// ==============================================
+// 3. Order Items
+// ==============================================
+
+Table order_items {
+    order_id varchar [not null]
+    order_item_id int [not null]
+    product_id varchar [not null]
+    seller_id varchar [not null]
+    shipping_limit_date varchar [not null]
+    price decimal(12,2) [not null]
+    freight_value decimal(12,2) [not null]
+
+    indexes {
+        (order_id, order_item_id) [pk]
+    }
+}
+
+// ==============================================
+// 4. Order Payments
+// ==============================================
+
+Table order_payments {
+    order_id varchar [not null]
+    payment_sequential int [not null]
+    payment_type varchar [not null]
+    payment_installments int [not null]
+    payment_value decial(12,2) [not null]
+
+    indexes {
+        (order_id, payment_sequential) [pk]
+    }
+}
+
+// ==============================================
+// 5. Order Reviews
+// ==============================================
+
+Table order_reviews {
+    review_id varchar [not null]
+    order_id varchar [not null]
+    review_score int [not null]
+    review_comment_title varchar
+    review_comment_message text
+    review_creation_date varchar [not null]
+    review_answer_timestamp varchar [not null]
+
+    indexes {
+        (review_id, order_id) [pk]
+    }
+
+    Note: 'A review_id can reference multiple orders, and an order can have multiple review IDs.'
+}
+
+// ==============================================
+// 6. Geolocation
+// ==============================================
+
+Table geolocation {
+    geolocation_zip_code_prefix int [not null]
+    geolocation_lat double [not null]
+    geolocation_lng double [not null]
+    geolocation_city varchar [not null]
+    geolocation_state varchar [not null]
+
+    Note: 'No validated natural primary key. ZIP prefixes are repeated and must not be used as unique lookup keys in this source table.'
+}
+
+// ==============================================
+// 7. Sellers
+// ==============================================
+
+Table products {
+    product_id varchar [pk]
+    product_category_name varchar
+    product_name_lenght double
+    product_description_lenght double
+    product_photos_qty double
+    product_weight_g double
+    prouct_length_cm double
+    product_height_cm double
+    product_width_cm double
+
+    Note: 'Original source spelling lenght is intentionally preserved.'
+}
+
+// ==============================================
+// 9. Product Category Translation
+// ==============================================
+
+Table category_translation {
+    product_category_name varchar [pk]
+    product_category_name_english varchar [not null]
+}
+
+// ==============================================
+// Validated source relationships
+// ==============================================
+
+Ref: orders.customer_id > customers.customer_id
+
+Ref: order_items.order_id > orders.order_id 
+Ref: order_items.product_id > products.product_id
+Ref: order_items.seller_id > sellers.seller_id
+
+Ref: order_payments.order_id > orders.order_id
+
+Ref: order_reviews.order_id > orders.order_id 
+
+Ref: products.product_category_name > category_translation.product_category_name
+
+// Geolocation ZIP prefixes are nonunique.
+// Geographic enrichment will use a standardized
+// one-row-per-ZIP-prefix lookup in a later layer.
