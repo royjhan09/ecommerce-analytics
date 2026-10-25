@@ -646,10 +646,17 @@ Standardized lookup keys should preserve those zeros.
 - **Grain:** One row per Portuguese product cateogry
 - **Candidate primary key:** 'product_ctegory_name'
 
-### Column Definitions
+### Column Validation
 
 | Column | Source Type | Description |
 |---|---|---|
+| 'product_category_name' | string | Product category in Portuguese |
+| 'product_category_name_english' | string | Product category translated in English |
+
+### Key Validation
+
+| Check | Result |
+|---|---|
 | Total rows | 71 |
 | Unique Portuguese categories | 71 |
 | Unique English categories | 71 |
