@@ -49,3 +49,34 @@ SELECT
     END AS status
 FROM row_counts
 ORDER BY table_name;
+
+-- Fail the execution if any raw table has an unexpected row count.
+
+DO $$ 
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM (
+            SELECT COUNT(*) <> 99441 AS mismatch FROM raw.orders
+            UNION ALL 
+            SELECT COUNT(*) <> 99441 FROM raw.customers
+            UNION ALL 
+            SELECT COUNT(*) <> 112650 FROM raw.order_items
+            UNION ALL 
+            SELECT COUNT(*) <> 103886 FROM raw.order_payments 
+            UNION ALL 
+            SELECT COUNT(*) <> 99224 FROM raw.order_reviews
+            UNION ALL 
+            SELECT COUNT(*) <> 1000163 FROM raw.geolocation
+            UNION ALL 
+            SELECT COUNT(*) <> 3095 FROM raw.sellers
+            UNION ALL 
+            SELECT COUNT(*) <> 32951 FROM raw.products 
+            UNION ALL 
+            SELECT COUNT(*) <> 71 FROM raw.product_category_name_translation
+        ) AS checks
+        WHERE mismatch
+    ) THEN
+        RAISE EXCEPTION 'Raw data validation failed: row counts differ from expected values.';
+    END IF;
+END
+$$;
