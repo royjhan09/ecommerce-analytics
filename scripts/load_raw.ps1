@@ -12,8 +12,8 @@ $psqlArgs = @(
     "-d", "olist_ecommerce"
     "-v", "ON_ERROR_STOP=1"
     "--single-transaction"
-    "-f", "sql/03_load_raw_data.sql"
-    "-f", "sql/04_validate_raw_load.sql"
+    "-f", "sql/raw/03_load_raw_data.sql"
+    "-f", "sql/raw/04_validate_raw_load.sql"
 )
 
 & psql @psqlArgs 
