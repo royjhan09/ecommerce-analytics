@@ -1,0 +1,169 @@
+
+Project olist_analytics {
+  database_type: 'PostgreSQL'
+  Note: 'Olist analytical data model. Relationships are logical; not all are enforced by SQL foreign-key constraints.'
+}
+
+// ===========================================
+// Order-level fact
+// Grain: one row per order
+// ===========================================
+
+Table fact_orders {
+  order_id text [pk]
+  customer_id text [not null]
+  order_status text
+
+  order_purchase_timestamp timestamp
+  order_approved_at timestamp
+  order_delivered_carrier_date timestamp
+  order_delivered_customer_date timestamp
+  order_estimated_delivery_date timestamp
+
+  item_count bigint
+  item_value numeric
+  freight_value numeric
+
+  payment_count bigint
+  payment_value numeric
+
+  Note: 'Aggregated item and payment measures. Some amounts may be NULL when source records are absent.'
+}
+
+// ===========================================
+// Item-level fact
+// Grain: one row per order item
+// ===========================================
+
+Table fact_order_items {
+  order_id text [pk]
+  order_item_id integer [pk]
+
+  product_id text [not null]
+  seller_id text [not null]
+
+  shipping_limit_date timestamp
+  item_price numeric
+  item_freight_value numeric
+
+  Note: 'Composite PK: (order_id, order_item_id). Payments are not allocated to items.'
+}
+
+// ===========================================
+// Product dimension
+// Grain: one row per product
+// ===========================================
+
+Table dim_products {
+  product_id text [pk]
+
+  product_category_name text
+  product_category_name_english text
+
+  product_name_length integer
+  product_description_length integer
+  product_photos_qty integer
+
+  product_weight_g double
+  product_length_cm double
+  product_height_cm double
+  product_width_cm double
+
+  Note: 'English category may be NULL. Source naming errors are standardized.'
+}
+
+// ===========================================
+// Customer dimension
+// Grain: one row per customer_id
+// ===========================================
+
+Table dim_customers {
+  customer_id text [pk]
+  customer_unique_id text
+
+  customer_zip_code_prefix text
+  customer_city text
+  customer_state text
+
+  Note: 'customer_unique_id is not unique; it links order-associated customer records to repeat buyers.'
+}
+
+// ===========================================
+// Seller dimension
+// Grain: one row per seller
+// ===========================================
+
+Table dim_sellers {
+  seller_id text [pk]
+
+  seller_zip_code_prefix text
+  seller_city text
+  seller_state text
+}
+
+// ===========================================
+// Order-level review summary
+// Grain: one row per reviewed order
+// ===========================================
+
+Table order_review_summary {
+  order_id text [pk]
+
+  selected_review_id text
+  review_score integer
+  review_creation_date timestamp
+
+  review_count bigint
+  has_conflicting_scores boolean
+
+  Note: 'Most recent review selected. Conflicting scores flagged. Orders without reviews are absent.'
+}
+
+// ===========================================
+// Delivery performance model
+// Grain: one row per order
+// ===========================================
+
+Table order_delivery_performance {
+  order_id text [pk]
+  customer_id text
+
+  order_status text
+  order_purchase_timestamp timestamp
+  order_delivered_customer_date timestamp
+  order_estimated_delivery_date timestamp
+
+  review_score integer
+  review_count bigint
+  has_conflicting_scores boolean
+
+  has_valid_delivery_timeline boolean
+
+  delivery_days integer
+  delivery_delay_days integer
+  is_late_delivery boolean
+
+  Note: 'Derived from fact_orders and order_review_summary; invalid timelines produce NULL delivery measures.'
+}
+
+// ===========================================
+// Logical relationships
+// ===========================================
+
+// One customer record may have orders
+Ref: fact_orders.customer_id > dim_customers.customer_id
+
+// One order may have many items
+Ref: fact_order_items.order_id > fact_orders.order_id
+
+// One product may appear in many items
+Ref: fact_order_items.product_id > dim_products.product_id
+
+// One seller may fulfill many items
+Ref: fact_order_items.seller_id > dim_sellers.seller_id
+
+// Each reviewed order maps to an order
+Ref: order_review_summary.order_id - fact_orders.order_id
+
+// Each order has one delivery performance row
+Ref: order_delivery_performance.order_id - fact_orders.order_id
